@@ -1,0 +1,24 @@
+{
+  "name": "openx/minumumzf2",
+  "description": "ZF-REST client",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://packages.zendframework.com/"
+    }
+  ],
+  "require": {
+    "zendframework/zendoauth": "2.0.3",
+    "zendframework/zendrest": "2.0.2"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "4.8.*"
+  },
+  "autoload": {
+    "psr-0": {
+      "OpenX": "./"
+    }
+  }
+}
