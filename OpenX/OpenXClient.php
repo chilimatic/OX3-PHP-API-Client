@@ -1,22 +1,17 @@
 <?php
-/* This file includes the PHP client class supprting Zend Framework Version 2. */
+namespace OpenX;
 
-class OX3_Api_Client2 extends ZendRest\Client\RestClient
+
+/**
+ * Class Client
+ * @package OpenX
+ */
+class OpenXClient extends \ZendRest\Client\RestClient
 {
     /**
      * @var string
      */
     private $path_prefix = '/ox/4.0';
-
-    /**
-     * @var string
-     */
-    private $uri;
-
-    /**
-     * @var array
-     */
-    private $data;
 
     /**
      * OX3_Api_Client2 constructor.
@@ -30,13 +25,15 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
      * @param array $sso
      * @param array $proxy
      * @param string $path
+     *
+     * @throws \Exception
      */
     public function __construct($uri, $email, $password, $consumer_key, $consumer_secret, $oauth_realm, $cookieJarFile = './OX3_Api_CookieJar.txt', array $sso = array(), array $proxy = array(), $path = '/ox/4.0')
     {
         if (preg_match('#/ox/[0-9]\.0#', $path)) {
             $this->path_prefix = $path;
         } else {
-            throw new Exception ("Invalid path prefix specified");
+            throw new \Exception ("Invalid path prefix specified");
         }
 
         if (!$proxy)
@@ -57,7 +54,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
             );
         }
         // Set the proxy['adapter'] if $proxy config was passed in
-        if (!$proxy) {
+        if ($proxy) {
           $proxy['adapter'] = 'Zend_Http_Client_Adapter_Proxy';
         }
         // Initilize the cookie jar, from the $cookieJarFile if present
@@ -66,11 +63,11 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
         if (is_readable($cookieJarFile)) {
             $cookieJar = @unserialize(file_get_contents($cookieJarFile));
         }
-        if (!$cookieJar instanceof Zend\Http\Cookies) {
-            $cookieJar = new Zend\Http\Cookies();
+        if (!$cookieJar instanceof \Zend\Http\Cookies) {
+            $cookieJar = new \Zend\Http\Cookies();
         }
 
-        $client->setCookies($cookieJar->getAllCookies(Zend\Http\Cookies::COOKIE_STRING_ARRAY));
+        $client->setCookies($cookieJar->getAllCookies(\Zend\Http\Cookies::COOKIE_STRING_ARRAY));
         $client->setOptions($proxy);
         $result = $this->_checkAccessToken();
 
@@ -87,10 +84,11 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                 'consumerKey'       => $consumer_key,
                 'consumerSecret'    => $consumer_secret
             );
-            $oAuth = new ZendOauth\Consumer($config);
+
+            $oAuth = new \ZendOAuth\Consumer($config);
             $requestToken = $oAuth->getRequestToken();
             // Authenticate to SSO
-            $loginClient = new Zend\Http\Client($sso['loginUrl']);
+            $loginClient = new \Zend\Http\Client($sso['loginUrl']);
             $loginClient->setOptions($proxy);
             $loginClient->setParameterPost(array(
                 'email'         => $email,
@@ -106,12 +104,12 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                 @parse_str(substr($loginBody, 4), $vars);
 
                 if (empty($vars['oauth_token'])) {
-                    throw new Exception('Error parsing SSO login response');
+                    throw new \Exception('Error parsing SSO login response');
                 }
                 // Swap the (authorized) request token for an access token:
                 $accessToken = $oAuth->getAccessToken($vars, $requestToken)->getToken();
 
-                $cookie = new Zend\Http\Header\SetCookie('openx3_access_token', $accessToken);
+                $cookie = new \Zend\Http\Header\SetCookie('openx3_access_token', $accessToken);
                 $cookie->setDomain($aUrl['host']);
                 $client->addCookie($cookie);
 
@@ -121,14 +119,14 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                     chmod($cookieJarFile, 0666);
                 }
             } else {
-                throw new Exception('SSO Authentication error');
+                throw new \Exception('SSO Authentication error');
             }
         }
     }
 
     /**
-     * @return string
-     * @throws Exception
+     * @return mixed
+     * @throws \Exception
      */
     private function _checkAccessToken()
     {
@@ -140,13 +138,13 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                 return $this->_checkAccessTokenV4();
                 break;
             default:
-                throw new Exception('Unknown API path');
+                throw new \Exception('Unknown API path');
                 break;
         }
     }
 
     /**
-     * @return string
+     * @return mixed
      */
     protected function _checkAccessTokenV3()
     {
@@ -154,7 +152,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
     }
 
     /**
-     * @return string
+     * @return mixed
      */
     protected function _checkAccessTokenV4()
     {
@@ -162,12 +160,9 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
     }
 
     /**
-     * Overriding the __call() method so that I can return the $response object directly
-     * since the Zend_Rest_Client's __call() method *requires* the response to be (valid) XML
-     *
      * @param string $method
      * @param array $args
-     * @return string The body of the request
+     * @return $this
      */
     public function __call($method, $args)
     {
@@ -218,7 +213,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
      *
      * @param mixed $method
      * @param mixed $data
-     * @return Zend_Http_Response
+     * @return \Zend\Http\Response
      *
      * NOTE: Overload Zend_Rest_Client method to support file uploads.
      */
