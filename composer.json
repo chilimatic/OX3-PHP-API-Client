@@ -2,6 +2,7 @@
   "name": "openx/minumumzf2",
   "description": "ZF-REST client",
   "minimum-stability": "stable",
+  "version": "1.0.0",
   "license": "proprietary",
   "repositories": [
     {
