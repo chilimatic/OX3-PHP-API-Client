@@ -1,27 +1,53 @@
 <?php
 /* This file includes the PHP client class supprting Zend Framework Version 2. */
 
-require_once 'autoload.php';
-require_once 'zendframework/zendrest/library/ZendRest/Client/RestClient.php';
-require_once 'zendframework/zend-http/src/Cookies.php';
-require_once 'zendframework/zendoauth/library/ZendOAuth/Consumer.php';
-
-class OX3_Api_Client2 extends ZendRest\Client\RestClient 
+class OX3_Api_Client2 extends ZendRest\Client\RestClient
 {
-    var $path_prefix = '/ox/4.0';
+    /**
+     * @var string
+     */
+    private $path_prefix = '/ox/4.0';
 
-    public function __construct($uri, $email, $password, $consumer_key, $consumer_secret, $oauth_realm, $cookieJarFile = './OX3_Api_CookieJar.txt', $sso = array(), $proxy = array(), $path = '/ox/4.0')
+    /**
+     * @var string
+     */
+    private $uri;
+
+    /**
+     * @var array
+     */
+    private $data;
+
+    /**
+     * OX3_Api_Client2 constructor.
+     * @param string $uri
+     * @param string $email
+     * @param string $password
+     * @param string $consumer_key
+     * @param string $consumer_secret
+     * @param string $oauth_realm
+     * @param string $cookieJarFile
+     * @param array $sso
+     * @param array $proxy
+     * @param string $path
+     */
+    public function __construct($uri, $email, $password, $consumer_key, $consumer_secret, $oauth_realm, $cookieJarFile = './OX3_Api_CookieJar.txt', array $sso = array(), array $proxy = array(), $path = '/ox/4.0')
     {
         if (preg_match('#/ox/[0-9]\.0#', $path)) {
             $this->path_prefix = $path;
         } else {
             throw new Exception ("Invalid path prefix specified");
         }
-        if (empty($proxy)) { $proxy = array(); }
+
+        if (!$proxy)
+        {
+            $proxy = array();
+        }
+
         parent::__construct($uri);
         $aUrl = parse_url($uri);
 
-        if (empty($sso)) {
+        if (!$sso) {
             $sso = array(
                 'siteUrl'           => 'https://sso.openx.com/api/index/initiate',
                 'requestTokenUrl'   => 'https://sso.openx.com/api/index/initiate',
@@ -31,9 +57,9 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
             );
         }
         // Set the proxy['adapter'] if $proxy config was passed in
-        if (!empty($proxy)) {
+        if (!$proxy) {
           $proxy['adapter'] = 'Zend_Http_Client_Adapter_Proxy';
-        }        
+        }
         // Initilize the cookie jar, from the $cookieJarFile if present
         $client = self::getHttpClient();
         $cookieJar = false;
@@ -43,7 +69,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
         if (!$cookieJar instanceof Zend\Http\Cookies) {
             $cookieJar = new Zend\Http\Cookies();
         }
-        
+
         $client->setCookies($cookieJar->getAllCookies(Zend\Http\Cookies::COOKIE_STRING_ARRAY));
         $client->setOptions($proxy);
         $result = $this->_checkAccessToken();
@@ -84,7 +110,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                 }
                 // Swap the (authorized) request token for an access token:
                 $accessToken = $oAuth->getAccessToken($vars, $requestToken)->getToken();
-            
+
                 $cookie = new Zend\Http\Header\SetCookie('openx3_access_token', $accessToken);
                 $cookie->setDomain($aUrl['host']);
                 $client->addCookie($cookie);
@@ -99,8 +125,12 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
             }
         }
     }
- 
-    protected function _checkAccessToken()
+
+    /**
+     * @return string
+     * @throws Exception
+     */
+    private function _checkAccessToken()
     {
         switch ($this->path_prefix) {
             case '/ox/3.0':
@@ -114,19 +144,23 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                 break;
         }
     }
-    
+
+    /**
+     * @return string
+     */
     protected function _checkAccessTokenV3()
     {
-        $result = $this->put('/a/session/validate');
-        return $result;
+        return $this->put('/a/session/validate');
     }
-    
+
+    /**
+     * @return string
+     */
     protected function _checkAccessTokenV4()
     {
-        $result = $this->get('/user');
-        return $result;
+        return $this->get('/user');
     }
-    
+
     /**
      * Overriding the __call() method so that I can return the $response object directly
      * since the Zend_Rest_Client's __call() method *requires* the response to be (valid) XML
@@ -140,7 +174,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
 
         $methods = array('post', 'get', 'delete', 'put');
 
-        if (in_array(strtolower($method), $methods)) {
+        if (in_array(strtolower($method), $methods, false)) {
             if (!isset($args[0])) {
                 $args[0] = $this->uri->getPath();
             }
@@ -149,13 +183,13 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                     $this->data[$key] = $value;
                 }
             }
-            //$this->_data['rest'] = 1;
+
             $response = $this->{'rest' . $method}($this->path_prefix . $args[0], $this->data);
             $this->data = array();//Initializes for next Rest method.
             return $response;
         } else {
             // More than one arg means it's definitely a Zend_Rest_Server
-            if (sizeof($args) == 1) {
+            if (count($args) == 1) {
                 // Uses first called function name as method name
                 if (!isset($this->data['method'])) {
                     $this->data['method'] = $method;
@@ -164,7 +198,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                 $this->data[$method]  = $args[0];
             } else {
                 $this->data['method'] = $method;
-                if (sizeof($args) > 0) {
+                if (count($args) > 0) {
                     foreach ($args as $key => $arg) {
                         $key = 'arg' . $key;
                         $this->data[$key] = $arg;
@@ -201,11 +235,12 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
                     $request->getPost()->fromArray((array) $data);
                     break;
                 case '/ox/4.0':
-                    $rawData = $client->setRawBody(json_encode((array) $data));
-                    $headers = $client->setHeaders(array('Content-Type: application/json'));
+                    $client->setRawBody(json_encode((array) $data));
+                    $client->setHeaders(array('Content-Type: application/json'));
                     break;
             }
         }
+
         if (isset($this->files) && is_array($this->files) && count($this->files) > 0)
         {
             foreach ($this->files as $file)
@@ -238,7 +273,9 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
      */
     public function setFileUpload($filename, $formname, $data = null, $ctype = null)
     {
-        if (!isset($this->files)) $this->files = array();
+        if (!isset($this->files)) {
+            $this->files = array();
+        }
         $this->files[] = func_get_args();
     }
 
@@ -247,8 +284,8 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
      *
      * @param array $array An array of config key=values to be set on the HTTP client
      */
-    function setHttpConfig($config)
-    {   
+    public function setHttpConfig($config)
+    {
         $client = $this->getHttpClient();
         $client->setOptions($config);
     }
@@ -262,7 +299,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
      * @param integer $id The ID of the item being updated
      * @param array   $data Array of key=values to be updated in the object
      */
-    function update($entity, $id, $data)
+    public function update($entity, $id, $data)
     {
         switch ($this->path_prefix) {
             case '/ox/3.0':
@@ -271,10 +308,17 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
             case '/ox/4.0':
                 return $this->updateV4($entity, $id, $data);
                 break;
-        }   
+        }
+        return [];
     }
-    
-    function updateV3($entity, $id, $data)
+
+    /**
+     * @param string $entity
+     * @param string $id
+     * @param array $data
+     * @return mixed
+     */
+    private function updateV3($entity, $id, $data)
     {
         $current         = json_decode($this->get('/a/' . $entity . '/' . $id)->getBody());
 
@@ -282,7 +326,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
         $requiredFields  = json_decode($this->get('/a/' . $entity . '/requiredFields', $params)->getBody());
         $availableFields = json_decode($this->get('/a/' . $entity . '/availableFields')->getBody());
         foreach ($requiredFields as $field => $type) {
-            if ($availableFields->$field->has_dependencies) {
+            if ($availableFields->{$field}->has_dependencies) {
                 $params[$field] = $current->$field;
             }
         }
@@ -290,7 +334,7 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
         $update = array();
         foreach($requiredFields as $requiredField => $type) {
             if (property_exists($current, $requiredField)) {
-                $update[$requiredField] = (is_null($current->$requiredField)) ? 'null' : $current->$requiredField;
+                $update[$requiredField] = (is_null($current->{$requiredField})) ? 'null' : $current->{$requiredField};
             }
         }
         foreach ($data as $key => $value) {
@@ -298,11 +342,9 @@ class OX3_Api_Client2 extends ZendRest\Client\RestClient
         }
         return $this->post('/a/' . $entity . '/' . $id, $update);
     }
-    
-    function updateV4($entity, $id, $data)
+
+    private function updateV4($entity, $id, $data)
     {
         return $this->put('/' . $entity . '/' . $id, $data);
     }
 }
-
-?>
